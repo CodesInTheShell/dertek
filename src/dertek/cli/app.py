@@ -16,7 +16,7 @@ from dertek.exceptions import DertekError
 from dertek.runtime import SessionStore, build_runtime, load_settings
 
 app = typer.Typer(
-    help="Dertek, a two-speed agentic coding CLI.",
+    help="Dertek, a two-speed coding agent. Run it from a project or pass --workspace.",
     no_args_is_help=False,
     invoke_without_command=True,
     context_settings={"allow_extra_args": True},
@@ -29,9 +29,20 @@ console = Console()
 @app.callback(invoke_without_command=True)
 def root(
     ctx: typer.Context,
-    workspace: Annotated[Path, typer.Option("--workspace", "-C", help="Workspace directory.")] = Path("."),
+    workspace: Annotated[
+        Path,
+        typer.Option(
+            "--workspace", "-C", help="Workspace directory (default: current directory)."
+        ),
+    ] = Path("."),
     provider: Annotated[str | None, typer.Option("--provider", help="LLM provider: openai, anthropic, or gemini.")] = None,
     model: Annotated[str | None, typer.Option("--model", help="Provider model name.")] = None,
+    small_model: Annotated[
+        str | None, typer.Option("--small-model", help="Model for Jev-classified small tasks.")
+    ] = None,
+    large_model: Annotated[
+        str | None, typer.Option("--large-model", help="Model for major or uncertain tasks.")
+    ] = None,
     session: Annotated[str | None, typer.Option("--session", help="Resume a persisted session by ID.")] = None,
 ) -> None:
     if ctx.invoked_subcommand is not None:
@@ -45,6 +56,8 @@ def root(
             workspace,
             provider_name=provider,
             model=model,
+            small_model=small_model,
+            large_model=large_model,
             session_id=session,
             events=RichEventSink(console),
             approval_handler=lambda tool_name, detail: cli_approval(console, tool_name, detail),
@@ -77,7 +90,10 @@ def doctor() -> None:
     table.add_column("Status")
     table.add_row("Version", __version__)
     table.add_row("Provider", settings.provider)
-    table.add_row("Model", settings.model)
+    table.add_row("Small model", settings.small_model)
+    table.add_row("Small reasoning", settings.small_reasoning_effort)
+    table.add_row("Large model", settings.effective_large_model)
+    table.add_row("Large reasoning", settings.large_reasoning_effort)
     table.add_row("OPENAI_API_KEY", "set" if os.getenv("OPENAI_API_KEY") else "missing")
     table.add_row("TYPESAFE_API_KEY", "set" if os.getenv("TYPESAFE_API_KEY") else "missing (heuristic router fallback)")
     table.add_row("Approval mode", settings.approval_mode)

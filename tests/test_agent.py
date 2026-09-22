@@ -7,7 +7,7 @@ from dertek.core.agent import Agent
 from dertek.core.session import Session
 from dertek.hooks.manager import HookManager
 from dertek.models import AgentRequest, AgentResponse, ToolCall
-from dertek.router.models import RouteDecision, TaskRoute
+from dertek.router.models import ModelTier, RouteDecision, TaskRoute
 from dertek.security.policy import CommandPolicy
 from dertek.tools.registry import build_default_registry
 
@@ -62,3 +62,66 @@ async def test_agent_tool_loop(tmp_path: Path) -> None:
     assert agent.session.history[0].prompt == "what is in hello.txt?"
     assert agent.session.history[0].response == "The file says hello world."
     assert agent.session.history[0].tools[0].output is not None
+
+
+class TierRouter:
+    def __init__(self, tier: ModelTier, confidence: float) -> None:
+        self.tier = tier
+        self.confidence = confidence
+
+    async def route(self, prompt: str, workspace: Path) -> RouteDecision:
+        del prompt, workspace
+        return RouteDecision(
+            TaskRoute.CHAT,
+            0.99,
+            source="test",
+            model_tier=self.tier,
+            model_confidence=self.confidence,
+        )
+
+
+class FinalProvider:
+    request: AgentRequest | None = None
+
+    async def generate(self, request: AgentRequest) -> AgentResponse:
+        self.request = request
+        return AgentResponse(text="done", continuation_token="response-1")
+
+
+@pytest.mark.parametrize(
+    ("tier", "confidence", "expected_model", "expected_tier", "expected_effort"),
+    [
+        (ModelTier.SMALL, 0.95, "small-test", "small", "high"),
+        (ModelTier.SMALL, 0.40, "large-test", "large", "low"),
+        (ModelTier.LARGE, 0.95, "large-test", "large", "low"),
+    ],
+)
+@pytest.mark.asyncio
+async def test_agent_selects_model_tier_with_large_as_safe_fallback(
+    tmp_path: Path,
+    tier: ModelTier,
+    confidence: float,
+    expected_model: str,
+    expected_tier: str,
+    expected_effort: str,
+) -> None:
+    provider = FinalProvider()
+    agent = Agent(
+        settings=Settings(small_model="small-test", large_model="large-test"),
+        provider=provider,
+        router=TierRouter(tier, confidence),
+        tools=build_default_registry(str(tmp_path)),
+        hooks=HookManager(CommandPolicy()),
+        session=Session(tmp_path),
+    )
+
+    result = await agent.run("explain this")
+
+    assert provider.request is not None
+    assert provider.request.model == expected_model
+    assert result.model == expected_model
+    assert result.model_tier == expected_tier
+    assert result.reasoning_effort == expected_effort
+    assert provider.request.reasoning_effort == expected_effort
+    assert agent.session.history[0].model == expected_model
+    assert agent.session.history[0].reasoning_effort == expected_effort

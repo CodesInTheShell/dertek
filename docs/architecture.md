@@ -16,7 +16,7 @@
                 Dertek Core
        +-------------+-------------+
        |             |             |
-     Router       Providers      Tools
+ Decision engine  Providers      Tools
        |             |             |
    TypeSafe Jev   OpenAI now    Python code
                   Claude later
@@ -31,10 +31,7 @@ The runtime owns application assembly: settings, session persistence, providers,
 User prompt
    |
    v
-Router
-   |
-   v
-Confidence gate
+Jev intake (workflow / tools / model / verification)
    |
    v
 Context builder
@@ -61,7 +58,15 @@ LLM provider
         post-tool hook
              |
              v
-       tool result -> LLM
+       tool result
+             |
+             +--> meaningful change -> Jev checkpoint
+             |                         |
+             |                         +--> continue / Luna -> Terra
+             |
+             +--> routine success ----> LLM
+                                       |
+                                       +--> optional Jev verification
 ```
 
 ## Package responsibilities
@@ -70,13 +75,25 @@ LLM provider
 - `dertek.cli`: Typer/Rich interface, interactive REPL, approval UI.
 - `dertek.core`: agent loop, session, context building, events.
 - `dertek.providers`: provider-neutral contracts and OpenAI implementation.
-- `dertek.router`: TypeSafe Jev router, fallback router, confidence gates.
+- `dertek.router`: typed intake/checkpoint/verification decisions, TypeSafe Jev adapter, fallback engine, and confidence gates.
 - `dertek.tools`: tool contracts, registry, file/search/shell/git tools.
 - `dertek.hooks`: lifecycle decisions around tool execution.
 - `dertek.security`: workspace path boundaries and command policy.
 
 ## State strategy
 
-OpenAI Responses uses a continuation token (`previous_response_id`) for the current session. The provider contract exposes this as an opaque `continuation_token`, rather than leaking OpenAI-specific naming into the core. Future providers may implement this differently.
+OpenAI Responses uses a continuation token (`previous_response_id`) for the current model context. The provider contract exposes this as an opaque `continuation_token`. A Luna-to-Terra escalation clears it and constructs a provider-neutral evidence handoff so model-specific state never crosses tiers.
 
 `Session` is serializable. The runtime persists full sessions under `~/.dertek/sessions/`; provider continuation state remains opaque to the core.
+
+## Patch engine
+
+`apply_patch(patch: string)` is a stable tool boundary and does not depend on Git. The tool parses and validates the complete patch before selecting an engine:
+
+```text
+Dertek patch                         -> internal engine
+Unified diff + Git worktree          -> git apply
+Unified diff + non-Git/no executable -> internal engine
+```
+
+The internal engine handles UTF-8 add, update, delete, and rename operations. It validates exact hunk context in memory and commits changes through atomic replacements with rollback. Git remains an optional enhancement for compatible unified diffs and for the separate `git_diff` tool.

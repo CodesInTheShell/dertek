@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dertek.router.models import RouteResolution
+from dertek.router.models import ConfidenceBand, IntakeDecision, RouteResolution
 
 BASE_INSTRUCTIONS = """You are Dertek, an agentic coding assistant operating inside a local workspace.
 
@@ -30,3 +30,20 @@ def build_instructions(workspace: str, resolution: RouteResolution) -> str:
         )
 
     return BASE_INSTRUCTIONS + f"\nWorkspace: {workspace}\n" + route_line
+
+
+def build_decision_instructions(workspace: str, decision: IntakeDecision, *, trusted: bool) -> str:
+    if not trusted:
+        return build_instructions(
+            workspace,
+            RouteResolution(decision.route, decision.confidence, ConfidenceBand.MEDIUM, False),
+        )
+    return (
+        BASE_INSTRUCTIONS
+        + f"\nWorkspace: {workspace}\n"
+        + f"Jev workflow: route={decision.route.value}, intent={decision.intent.value}, "
+        + f"complexity={decision.complexity.value}, risk={decision.risk.value}, "
+        + f"scope={decision.scope.value}, workflow={decision.workflow.value}, "
+        + f"verification={decision.verification.value}. Follow this bounded workflow, "
+        + "but rely on observed repository evidence and deterministic tool policy.\n"
+    )

@@ -24,7 +24,7 @@ class HookManager:
             decision = self.policy.evaluate_shell(command, self.approval_mode)
             return HookDecision(decision.action, decision.reason)
 
-        # Workspace file mutation via apply_patch is constrained by git apply and the workspace.
+        # apply_patch validates all paths and constrains both patch engines to the workspace.
         # Read/search/diff tools are non-destructive.
         return HookDecision("allow", "Allowed by tool policy")
 

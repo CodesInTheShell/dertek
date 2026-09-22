@@ -128,6 +128,16 @@ def load_settings(paths: AppPaths | None = None) -> Settings:
     if not isinstance(saved, dict):
         raise ConfigurationError(f"Settings must be a JSON object: {paths.settings_file}")
 
+    # Migrate the original single-model file setting in memory. An explicit new
+    # large_model value wins when both keys are present. DERTEK_MODEL remains an
+    # environment-level compatibility override below.
+    if "model" in saved and "large_model" not in saved:
+        # gpt-5.5 was written automatically by the v0.1 defaults. Let that exact
+        # value migrate to the new Terra default; preserve any custom legacy ID.
+        if saved["model"] != "gpt-5.5":
+            saved["large_model"] = saved["model"]
+    saved.pop("model", None)
+
     allowed = set(Settings.model_fields)
     unknown = set(saved) - allowed
     if unknown:

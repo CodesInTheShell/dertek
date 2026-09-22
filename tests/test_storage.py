@@ -17,6 +17,10 @@ def test_session_round_trip_preserves_full_history_and_permissions(tmp_path: Pat
     turn.route = {"route": "search", "confidence": 0.99}
     turn.tools.append(ToolRecord("read_file", {"path": "secret.txt"}, "call-1", output="raw output"))
     turn.response = "Done"
+    turn.decisions.append({"phase": "intake", "result": {"model_tier": "small"}})
+    turn.model_transitions.append({"from": "small", "to": "large"})
+    turn.jev_call_count = 2
+    turn.verification_status = "passed"
     store.save(session)
 
     restored = store.load(session.id)
@@ -24,6 +28,22 @@ def test_session_round_trip_preserves_full_history_and_permissions(tmp_path: Pat
     assert stat.S_IMODE(paths.root.stat().st_mode) == 0o700
     assert stat.S_IMODE(paths.settings_file.stat().st_mode) == 0o600
     assert stat.S_IMODE((paths.sessions_dir / f"{session.id}.json").stat().st_mode) == 0o600
+
+
+def test_legacy_session_loads_with_decision_defaults(tmp_path: Path) -> None:
+    value = {
+        "version": 1,
+        "id": "a" * 32,
+        "workspace": str(tmp_path),
+        "turns": 1,
+        "created_at": "2025-01-01T00:00:00+00:00",
+        "updated_at": "2025-01-01T00:00:00+00:00",
+        "history": [{"prompt": "old", "started_at": "2025-01-01T00:00:00+00:00"}],
+    }
+    restored = Session.from_dict(value)
+    assert restored.history[0].decisions == []
+    assert restored.history[0].jev_call_count == 0
+    assert restored.to_dict()["version"] == 2
 
 
 def test_corrupt_and_missing_sessions_raise_clear_errors(tmp_path: Path) -> None:
@@ -53,3 +73,31 @@ def test_settings_file_contains_no_credentials(tmp_path: Path) -> None:
     SessionStore(paths).ensure()
     data = json.loads(paths.settings_file.read_text(encoding="utf-8"))
     assert not any("key" in key.lower() or "secret" in key.lower() for key in data)
+
+
+def test_new_large_model_setting_wins_over_legacy_file_key(tmp_path: Path) -> None:
+    paths = AppPaths(tmp_path / ".dertek")
+    store = SessionStore(paths)
+    store.ensure()
+    paths.settings_file.write_text(
+        json.dumps({"model": "legacy-model", "large_model": "new-large-model"}),
+        encoding="utf-8",
+    )
+
+    settings = load_settings(paths)
+
+    assert settings.effective_large_model == "new-large-model"
+
+
+def test_original_generated_model_migrates_to_terra_default(tmp_path: Path) -> None:
+    paths = AppPaths(tmp_path / ".dertek")
+    store = SessionStore(paths)
+    store.ensure()
+    paths.settings_file.write_text(json.dumps({"model": "gpt-5.5"}), encoding="utf-8")
+
+    settings = load_settings(paths)
+
+    assert settings.small_model == "gpt-5.6-luna"
+    assert settings.effective_large_model == "gpt-5.6-terra"
+    assert settings.small_reasoning_effort == "high"
+    assert settings.large_reasoning_effort == "low"

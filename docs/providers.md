@@ -21,17 +21,26 @@ Environment:
 export OPENAI_API_KEY="..."
 ```
 
-The default model is configurable with:
+The small and large models are configurable with:
 
 ```bash
-export DERTEK_MODEL="gpt-5.5"
+export DERTEK_SMALL_MODEL="gpt-5.6-luna"
+export DERTEK_SMALL_REASONING_EFFORT="high"
+export DERTEK_LARGE_MODEL="gpt-5.6-terra"
+export DERTEK_LARGE_REASONING_EFFORT="low"
 ```
 
 or per command:
 
 ```bash
-uv run dertek --model gpt-5.5
+dertek --small-model gpt-5.6-luna --large-model gpt-5.6-terra
 ```
+
+`DERTEK_MODEL` and `--model` remain backward-compatible overrides for the large model.
+
+For Responses API calls, Dertek sends the selected tier's effort as `reasoning={"effort": value}`. Both default models support `none`, `low`, `medium`, `high`, `xhigh`, and `max`. Defaults are Luna/high for small tasks and Terra/low for large tasks.
+
+Official references: [GPT-5.6 Terra](https://developers.openai.com/api/docs/models/gpt-5.6-terra), [GPT-5.6 Luna](https://developers.openai.com/api/docs/models/gpt-5.6-luna), and [Responses API create](https://developers.openai.com/api/reference/cli/resources/responses/methods/create).
 
 ## Claude and Gemini
 

@@ -1,52 +1,36 @@
-# Router and confidence gates
+# Jev decision controller
 
-Dertek uses the router only for bounded semantic decisions. It does not ask Jev to write code or perform open-ended reasoning.
+Jev is Dertek's typed decision controller. Luna and Terra remain the generative workers that explain, reason, write code, and produce patches. Jev never authorizes a dangerous action or generates free-form agent work.
 
-## Routes
+## Three decision phases
+
+One Jev request batches several `Choice` judgments for each phase:
+
+1. **Intake** always runs once and selects route, intent, complexity, risk, expected scope, workflow, tool profile, model tier, and verification level.
+2. **Checkpoint** runs only when new evidence could change execution: a tool error, mutation, scope expansion, or Luna reaching its bounded step limit.
+3. **Verification** runs when requested by the workflow or when the turn mutated files or retained errors. Straightforward chat and successful read-only discovery skip it.
+
+Dertek allows at most four decision calls per turn: one intake, two checkpoints, and one verification. Routine successful read-only tool calls do not cause checkpoints.
+
+## Model control
+
+Jev chooses Luna for bounded generative work and Terra for complex, risky, broad, or ambiguous work. A Luna choice must meet the medium confidence threshold. Otherwise Dertek starts Terra.
+
+Luna may escalate to Terra after a checkpoint. Dertek never downgrades Terra during a turn. Escalation clears the model-specific continuation token and gives Terra a structured handoff containing the original request, decisions, and bounded tool evidence.
+
+Default profiles remain:
 
 ```text
-chat     explanations and general questions
-code     implementation/refactoring/edit requests
-debug    diagnosis of failures or broken behavior
-search   repository discovery and locating symbols/files
-command  explicit request to run commands/tests/builds
+small  gpt-5.6-luna   reasoning effort: high
+large  gpt-5.6-terra  reasoning effort: low
 ```
 
-## TypeSafe Jev
+## Confidence and tools
 
-The adapter uses the official `typesafe-sdk` and asks one `Choice` question with the prompt as state. A `Choice` answer provides the selected option plus probabilities/confidence. The synchronous SDK call is moved to a worker thread so the rest of Dertek remains asynchronous.
+Default thresholds are high `0.90` and medium `0.65`. A focused tool profile is enforced only when both the overall route and tool-profile judgment are highly confident. Uncertain decisions expose the recovery tool set and favor Terra. Every Jev answer, probability, confidence, checkpoint trigger, model transition, and verification result is stored in the session timeline.
 
-## Threshold policy
+## Fallback and security
 
-Default thresholds:
+If the TypeSafe key is absent or any Jev phase fails, the heuristic decision engine handles that phase conservatively. It selects Terra, preserves recovery tools, and does not terminate the run.
 
-```text
->= 0.90        HIGH
-0.65 - 0.899   MEDIUM
-< 0.65         LOW
-```
-
-The behavior is intentionally conservative:
-
-- HIGH: the route is trusted enough to focus the available tool set and instructions.
-- MEDIUM: the route is only a hint. All tools remain available so the main LLM can verify the situation itself.
-- LOW: the route is effectively ignored for constraints. The main LLM receives the normal tool set.
-
-This means an uncertain fast model never blocks the stronger model from recovering.
-
-## Fallback
-
-If `TYPESAFE_API_KEY` is missing or the Jev request fails, `HeuristicRouter` returns a deterministic best-effort route with deliberately modest confidence. The fallback is for availability, not quality parity with Jev.
-
-## Future router uses
-
-The same `Router` protocol can later drive:
-
-- model selection
-- context retrieval strategy
-- token budgets
-- pre-tool risk classification as an additional signal
-- post-tool error classification
-- deciding whether repository search should happen before the main LLM call
-
-Security-critical authorization must remain deterministic even if semantic routing is added.
+Security-critical behavior remains deterministic. Command denial, user approval, workspace guards, and patch validation do not trust Jev as an authorization boundary.

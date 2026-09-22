@@ -20,6 +20,8 @@ class OpenAIProvider:
             "tools": request.tools,
             "parallel_tool_calls": True,
         }
+        if request.reasoning_effort:
+            kwargs["reasoning"] = {"effort": request.reasoning_effort}
         if request.continuation_token:
             kwargs["previous_response_id"] = request.continuation_token
 

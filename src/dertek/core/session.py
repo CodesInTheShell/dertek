@@ -30,6 +30,13 @@ class SessionTurn:
     prompt: str
     started_at: str = field(default_factory=utc_now)
     route: dict[str, Any] | None = None
+    model: str | None = None
+    model_tier: str | None = None
+    reasoning_effort: str | None = None
+    decisions: list[dict[str, Any]] = field(default_factory=list)
+    model_transitions: list[dict[str, Any]] = field(default_factory=list)
+    jev_call_count: int = 0
+    verification_status: str | None = None
     tools: list[ToolRecord] = field(default_factory=list)
     response: str | None = None
     error: str | None = None
@@ -59,7 +66,7 @@ class Session:
 
     def to_dict(self) -> dict[str, Any]:
         return {
-            "version": 1,
+            "version": 2,
             "id": self.id,
             "workspace": str(self.workspace),
             "continuation_token": self.continuation_token,
@@ -79,6 +86,13 @@ class Session:
                     prompt=str(turn["prompt"]),
                     started_at=str(turn["started_at"]),
                     route=turn.get("route"),
+                    model=turn.get("model"),
+                    model_tier=turn.get("model_tier"),
+                    reasoning_effort=turn.get("reasoning_effort"),
+                    decisions=list(turn.get("decisions", [])),
+                    model_transitions=list(turn.get("model_transitions", [])),
+                    jev_call_count=int(turn.get("jev_call_count", 0)),
+                    verification_status=turn.get("verification_status"),
                     tools=[ToolRecord(**tool) for tool in turn.get("tools", [])],
                     response=turn.get("response"),
                     error=turn.get("error"),

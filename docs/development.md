@@ -1,6 +1,40 @@
 # Development
 
-## Setup
+## Prerequisites
+
+Dertek is a Python application requiring Python 3.12 or newer. The recommended workflow uses [`uv`](https://docs.astral.sh/uv/getting-started/installation/) to manage Python, the virtual environment, locked dependencies, and project commands.
+
+Install `uv` on macOS or Linux:
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+Install it from Windows PowerShell:
+
+```powershell
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
+
+Restart the terminal when necessary and verify the installation:
+
+```bash
+uv --version
+```
+
+Other officially documented options include Homebrew (`brew install uv`), WinGet (`winget install --id=astral-sh.uv -e`), and `pipx install uv`.
+
+## User installation versus development
+
+Normal users should clone the repository and install the CLI as an isolated user tool:
+
+```bash
+uv tool install .
+```
+
+That makes `dertek` available from unrelated project directories. See [`installation.md`](installation.md). The commands below create a repository-local development environment for contributors instead.
+
+## Development setup
 
 ```bash
 uv sync --group dev
@@ -18,13 +52,24 @@ Lint:
 uv run ruff check .
 ```
 
-Run locally:
+Run from the source environment without installing the global tool:
 
 ```bash
-export OPENAI_API_KEY="..."
-export TYPESAFE_API_KEY="..."
-uv run dertek
+cp .env.example .env
+# Add OPENAI_API_KEY and TYPESAFE_API_KEY to .env.
+uv run --env-file .env dertek doctor
+uv run --env-file .env dertek
 ```
+
+The OpenAI key is required. The TypeSafe key is optional but enables Jev routing. Keep both keys out of `~/.dertek/settings.json` and Git. As an alternative to `--env-file`, export both variables in the current shell before running `uv run dertek`.
+
+For active CLI development, an optional editable tool installation reflects source changes immediately:
+
+```bash
+uv tool install --editable .
+```
+
+See [`configuration.md`](configuration.md) for first-run creation, the complete `settings.json` schema, precedence, and supported providers.
 
 ## Adding a tool
 
@@ -36,13 +81,28 @@ uv run dertek
 6. Add deterministic policy checks if the tool can mutate state.
 7. Add tests.
 
+### Patch tool contract
+
+Keep the provider-facing schema as `apply_patch(patch: string)`. The implementation accepts conventional unified diffs and the controlled Dertek format:
+
+```text
+*** Begin Patch
+*** Update File: src/example.py
+@@
+-old text
++new text
+*** End Patch
+```
+
+Use Dertek format when generating a patch specifically for Dertek. It always uses the internal engine and therefore behaves the same in Git repositories, ordinary folders, extracted archives, and machines without Git. Unified diffs use Git inside a worktree and the internal engine elsewhere. Add patch-engine tests for both routes; tests must also verify workspace containment, exact context, permissions/newlines, and rollback behavior.
+
 ## Adding a provider
 
 Implement the `LLMProvider` protocol and normalize provider-native tool calls into `ToolCall`. Do not add provider SDK imports to `dertek.core`.
 
-## Adding a router
+## Adding a decision engine
 
-Implement `Router.route(prompt, workspace)` and return `RouteDecision`. Keep thresholds in `RouterThresholds`, not inside the adapter.
+Implement `DecisionEngine.intake`, `checkpoint`, and `verify` with the typed models in `dertek.router.models`. Batch related bounded judgments in each request, preserve confidence/probabilities, and keep threshold policy in core code rather than the adapter. Every phase must have a conservative availability fallback.
 
 ## Testing philosophy
 

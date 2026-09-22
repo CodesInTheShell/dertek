@@ -32,6 +32,7 @@ class AgentRequest:
     input_items: str | list[dict[str, Any]]
     tools: list[dict[str, Any]]
     continuation_token: str | None = None
+    reasoning_effort: str | None = None
 
 
 @dataclass(slots=True)
@@ -47,3 +48,9 @@ class AgentRunResult:
     steps: int
     route: str | None
     route_confidence: float | None
+    model: str | None = None
+    model_tier: str | None = None
+    reasoning_effort: str | None = None
+    model_transitions: list[dict[str, Any]] = field(default_factory=list)
+    jev_call_count: int = 0
+    verification_status: str | None = None

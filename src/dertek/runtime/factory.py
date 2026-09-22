@@ -76,6 +76,8 @@ def build_runtime(
     *,
     provider_name: str | None = None,
     model: str | None = None,
+    small_model: str | None = None,
+    large_model: str | None = None,
     session_id: str | None = None,
     events: EventSink | None = None,
     approval_handler: ApprovalHandler = deny_approval,
@@ -88,6 +90,10 @@ def build_runtime(
         settings = settings.model_copy(update={"provider": provider_name})
     if model:
         settings = settings.model_copy(update={"model": model})
+    if small_model:
+        settings = settings.model_copy(update={"small_model": small_model})
+    if large_model:
+        settings = settings.model_copy(update={"large_model": large_model, "model": None})
 
     if session_id:
         session = store.load(session_id)
@@ -98,7 +104,7 @@ def build_runtime(
     else:
         session = Session(workspace=workspace)
     session.provider = settings.provider
-    session.model = settings.model
+    session.model = settings.effective_large_model
 
     contextual_events = ContextualEventSink(events)
     policy = CommandPolicy()
