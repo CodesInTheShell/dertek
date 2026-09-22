@@ -1,0 +1,46 @@
+[project]
+name = "dertek-cli"
+version = "0.1.0"
+description = "A two-speed agentic coding CLI using TypeSafe Jev for fast routing and generative LLMs for reasoning and code generation."
+readme = "README.md"
+requires-python = ">=3.12"
+authors = [
+  { name = "Dertek Contributors" }
+]
+dependencies = [
+  "openai>=3.15.0",
+  "pydantic>=2.10.0",
+  "pydantic-settings>=2.7.0",
+  "rich>=14.0.0",
+  "typer>=0.16.0",
+  "typesafe-sdk>=0.7.0",
+]
+
+[project.scripts]
+dertek = "dertek.cli.app:main"
+
+[dependency-groups]
+dev = [
+  "pytest>=9.0.0",
+  "pytest-asyncio>=1.0.0",
+  "ruff>=0.9.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/dertek"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+ignore = ["E501"]
