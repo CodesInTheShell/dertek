@@ -100,7 +100,27 @@ DERTEK_LARGE_MODEL=gpt-5.6-terra
 DERTEK_LARGE_REASONING_EFFORT=low
 ```
 
-The equivalent `~/.dertek/settings.json` fields are `"small_model"`, `"small_reasoning_effort"`, `"large_model"`, and `"large_reasoning_effort"`.
+Dertek creates `~/.dertek/settings.json` the first time you run a command such as `dertek doctor`. You can then edit it with non-secret defaults. A ready-to-use example is:
+
+```json
+{
+  "provider": "openai",
+  "small_model": "gpt-5.6-luna",
+  "small_reasoning_effort": "high",
+  "large_model": "gpt-5.6-terra",
+  "large_reasoning_effort": "low",
+  "router_high_confidence": 0.9,
+  "router_medium_confidence": 0.65,
+  "max_steps": 12,
+  "max_jev_calls_per_turn": 4,
+  "small_model_step_limit": 2,
+  "jev_verification_enabled": true,
+  "shell_timeout_seconds": 120,
+  "approval_mode": "on-request"
+}
+```
+
+Change `small_model`, `large_model`, and their reasoning efforts to customize the two tiers. Keep `OPENAI_API_KEY` and `TYPESAFE_API_KEY` in environment variables or an OS credential manager—never add API keys to `settings.json`.
 
 Dertek deliberately gives Luna `high` reasoning for inexpensive small tasks and Terra `low` reasoning for the main large-task path. The Responses API field is `reasoning: {"effort": "..."}`; valid Terra/Luna values are `none`, `low`, `medium`, `high`, `xhigh`, and `max`.
 
