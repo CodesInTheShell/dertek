@@ -53,6 +53,15 @@ uv tool install .
 dertek version
 ```
 
+For the first installation, use `uv tool install .` as shown above. After updating an existing clone, reinstall with `--force` so the currently installed Dertek tool is replaced:
+
+```bash
+cd /path/to/dertek
+git pull
+uv tool install --force .
+dertek version
+```
+
 If `dertek` is not found, run `uv tool list` first. If Dertek is absent, run `uv tool install .` from the clone. If it is installed but not discoverable, run `uv tool update-shell` and restart the terminal. The update-shell command configures `PATH`; it does not install Dertek. See the [installation guide](docs/installation.md) for detailed troubleshooting, updating, editable installs, and removal.
 
 Export credentials through your shell or use an OS credential manager:
