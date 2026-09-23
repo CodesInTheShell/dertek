@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from enum import StrEnum
 from pathlib import Path
 from typing import Literal
 
@@ -7,6 +8,17 @@ from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 ReasoningEffort = Literal["none", "low", "medium", "high", "xhigh", "max"]
+
+
+class ApprovalMode(StrEnum):
+    ON_REQUEST = "on-request"
+    NEVER = "never"
+    AUTO = "auto"
+
+
+class OpenAIAuthMode(StrEnum):
+    API_KEY = "api-key"
+    CHATGPT = "chatgpt"
 
 
 class Settings(BaseSettings):
@@ -18,6 +30,7 @@ class Settings(BaseSettings):
     )
 
     provider: Literal["openai", "anthropic", "gemini"] = "openai"
+    openai_auth: OpenAIAuthMode = OpenAIAuthMode.API_KEY
     small_model: str = "gpt-5.6-luna"
     large_model: str = "gpt-5.6-terra"
     small_reasoning_effort: ReasoningEffort = "high"
@@ -31,7 +44,7 @@ class Settings(BaseSettings):
     small_model_step_limit: int = Field(default=2, ge=1, le=20)
     jev_verification_enabled: bool = True
     shell_timeout_seconds: int = Field(default=120, ge=1, le=3600)
-    approval_mode: Literal["on-request", "never"] = "on-request"
+    approval_mode: ApprovalMode = ApprovalMode.ON_REQUEST
 
     @property
     def effective_large_model(self) -> str:

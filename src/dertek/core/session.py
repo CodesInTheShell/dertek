@@ -52,6 +52,7 @@ class Session:
     created_at: str = field(default_factory=utc_now)
     updated_at: str = field(default_factory=utc_now)
     provider: str | None = None
+    auth_mode: str | None = None
     model: str | None = None
     history: list[SessionTurn] = field(default_factory=list)
 
@@ -74,6 +75,7 @@ class Session:
             "created_at": self.created_at,
             "updated_at": self.updated_at,
             "provider": self.provider,
+            "auth_mode": self.auth_mode,
             "model": self.model,
             "history": [asdict(turn) for turn in self.history],
         }
@@ -108,6 +110,7 @@ class Session:
                 created_at=str(value["created_at"]),
                 updated_at=str(value["updated_at"]),
                 provider=value.get("provider"),
+                auth_mode=value.get("auth_mode"),
                 model=value.get("model"),
                 history=history,
             )

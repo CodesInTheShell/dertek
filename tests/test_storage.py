@@ -68,6 +68,25 @@ def test_environment_overrides_json_settings(tmp_path: Path, monkeypatch: pytest
     assert settings.max_steps == 4
 
 
+def test_auto_approval_mode_environment_overrides_settings(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    paths = AppPaths(tmp_path / ".dertek")
+    store = SessionStore(paths)
+    store.ensure()
+    paths.settings_file.write_text(
+        json.dumps({"approval_mode": "never"}), encoding="utf-8"
+    )
+    monkeypatch.setenv("DERTEK_APPROVAL_MODE", "auto")
+    assert load_settings(paths).approval_mode == "auto"
+
+
+def test_approval_mode_defaults_to_on_request(tmp_path: Path) -> None:
+    paths = AppPaths(tmp_path / ".dertek")
+    SessionStore(paths).ensure()
+    assert load_settings(paths).approval_mode == "on-request"
+
+
 def test_settings_file_contains_no_credentials(tmp_path: Path) -> None:
     paths = AppPaths(tmp_path / ".dertek")
     SessionStore(paths).ensure()

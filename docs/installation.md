@@ -23,7 +23,7 @@ dertek version
 dertek doctor
 ```
 
-`uv tool install` creates an isolated environment for Dertek. Target projects do not need Dertek in their own dependencies or virtual environments.
+`uv tool install` creates an isolated environment for Dertek. Target projects do not need Dertek in their own dependencies or virtual environments. Dertek implements its own agent loop and ChatGPT transport; users do not need to install the Codex CLI.
 
 ## Credentials
 
@@ -43,7 +43,7 @@ $env:OPENAI_API_KEY="your-openai-key"
 $env:TYPESAFE_API_KEY="your-typesafe-key"
 ```
 
-The OpenAI key is required. The TypeSafe key enables Jev; without it, Dertek uses the conservative heuristic decision fallback.
+An OpenAI key is required only in API-key mode; ChatGPT authentication is documented below. The TypeSafe key enables Jev; without it, Dertek uses the conservative heuristic decision fallback.
 
 ## Use Dertek in another project
 
@@ -82,11 +82,15 @@ git pull
 uv tool install --force .
 ```
 
-For contributors who want source edits to be reflected immediately, use an editable installation instead:
+### Contributor editable installation
+
+When developing Dertek, testing freshly pulled code, or following the latest source from a clone, install the checkout in editable mode using its absolute path:
 
 ```bash
-uv tool install --editable .
+uv tool install --force --editable /absolute/path/to/dertek
 ```
+
+`--force` replaces an older installed tool, while `--editable` loads Python code directly from the checkout. After `git pull`, ordinary source changes are immediately visible; reinstall after dependency or packaging changes. Do not move or delete the checkout while the editable tool is installed.
 
 Remove Dertek with:
 
@@ -149,3 +153,39 @@ If an older or incomplete installation exists, recreate it from the current chec
 cd /path/to/dertek
 uv tool install --force .
 ```
+
+## Troubleshooting: stale code after an update
+
+A normal uv tool installation contains a built copy of Dertek rather than loading Python files directly from the clone. If recently pulled fixes are not taking effect, uv may have reused a cached build with the same package version. Clean that cached package and force a fresh non-editable installation:
+
+```bash
+uv cache clean dertek-cli
+uv tool install --force --refresh /absolute/path/to/dertek
+```
+
+For example, if the clone is under your Documents directory:
+
+```bash
+uv cache clean dertek-cli
+uv tool install --force --refresh /home/your-name/Documents/REPO/dertek
+```
+
+Start a new `dertek` process after reinstalling. `--force` replaces the installed tool, while `--refresh` prevents uv from relying on stale cached package metadata or artifacts. Contributors making frequent source edits can instead use the editable installation described above.
+
+## ChatGPT subscription authentication
+
+Instead of exporting `OPENAI_API_KEY`, sign in through a browser:
+
+```bash
+dertek auth login
+```
+
+For SSH, containers, or headless systems:
+
+```bash
+dertek auth login --device-code
+```
+
+Then run `dertek --auth chatgpt`, or rely on the saved `openai_auth` setting created by login. Use `dertek --auth api-key` with an exported `OPENAI_API_KEY` to switch for one run. Switching modes leaves the owner-only ChatGPT credentials available for later use; `dertek auth logout` removes them but does not change the saved non-secret mode setting. Check with `dertek auth status` and `dertek doctor`. ChatGPT mode uses subscription limits, API-key mode uses API billing, and Dertek never silently falls back between them.
+
+Browser login uses the registered local callback ports `1455` and `1457`. If both ports are already in use, close the processes using them or use the device-code flow. An `invalid_authorize_request` immediately after opening the browser usually means an older Dertek installation is still generating the authorization URL; refresh a normal installation with `uv tool install --force .`, or switch the clone to `uv tool install --force --editable /absolute/path/to/dertek`, and retry.

@@ -1,51 +1,31 @@
 from __future__ import annotations
 
-import json
-from typing import Any
-
 from openai import AsyncOpenAI
 
-from dertek.models import AgentRequest, AgentResponse, ToolCall
+from dertek.models import AgentRequest, AgentResponse
+from dertek.providers.openai_transport import OpenAIAPITransport, ResponsesTransport
 
 
 class OpenAIProvider:
-    def __init__(self, client: AsyncOpenAI | None = None) -> None:
-        self.client = client or AsyncOpenAI()
+    """UI-neutral OpenAI provider backed by a selectable Responses transport."""
+
+    def __init__(
+        self,
+        client: AsyncOpenAI | None = None,
+        *,
+        transport: ResponsesTransport | None = None,
+    ) -> None:
+        if client is not None and transport is not None:
+            raise ValueError("Pass either client or transport, not both")
+        self.transport = transport or OpenAIAPITransport(client)
+        # Retained for callers that injected an SDK client before transports existed.
+        self.client = getattr(self.transport, "client", None)
 
     async def generate(self, request: AgentRequest) -> AgentResponse:
-        kwargs: dict[str, Any] = {
-            "model": request.model,
-            "instructions": request.instructions,
-            "input": request.input_items,
-            "tools": request.tools,
-            "parallel_tool_calls": True,
-        }
-        if request.reasoning_effort:
-            kwargs["reasoning"] = {"effort": request.reasoning_effort}
-        if request.continuation_token:
-            kwargs["previous_response_id"] = request.continuation_token
+        return await self.transport.create(request)
 
-        response = await self.client.responses.create(**kwargs)
+    async def list_models(self) -> list[str]:
+        return await self.transport.list_models()
 
-        tool_calls: list[ToolCall] = []
-        for item in response.output:
-            if getattr(item, "type", None) != "function_call":
-                continue
-            raw_arguments = getattr(item, "arguments", "{}") or "{}"
-            try:
-                arguments = json.loads(raw_arguments)
-            except json.JSONDecodeError:
-                arguments = {"_raw_arguments": raw_arguments}
-            tool_calls.append(
-                ToolCall(
-                    id=item.call_id,
-                    name=item.name,
-                    arguments=arguments,
-                )
-            )
-
-        return AgentResponse(
-            text=response.output_text or "",
-            tool_calls=tool_calls,
-            continuation_token=response.id,
-        )
+    def validate_model(self, model: str) -> None:
+        self.transport.validate_model(model)

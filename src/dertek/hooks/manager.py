@@ -11,6 +11,7 @@ from dertek.security.policy import CommandPolicy
 class HookDecision:
     action: Literal["allow", "ask", "deny"]
     reason: str
+    auto_approved: bool = False
 
 
 class HookManager:
@@ -22,7 +23,7 @@ class HookManager:
         if call.name == "shell":
             command = str(call.arguments.get("command", ""))
             decision = self.policy.evaluate_shell(command, self.approval_mode)
-            return HookDecision(decision.action, decision.reason)
+            return HookDecision(decision.action, decision.reason, decision.auto_approved)
 
         # apply_patch validates all paths and constrains both patch engines to the workspace.
         # Read/search/diff tools are non-destructive.

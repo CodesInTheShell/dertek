@@ -56,18 +56,20 @@ Run from the source environment without installing the global tool:
 
 ```bash
 cp .env.example .env
-# Add OPENAI_API_KEY and TYPESAFE_API_KEY to .env.
+# Add TYPESAFE_API_KEY and, for API-key mode, OPENAI_API_KEY.
 uv run --env-file .env dertek doctor
-uv run --env-file .env dertek
+uv run --env-file .env dertek --auth api-key
 ```
 
-The OpenAI key is required. The TypeSafe key is optional but enables Jev routing. Keep both keys out of `~/.dertek/settings.json` and Git. As an alternative to `--env-file`, export both variables in the current shell before running `uv run dertek`.
+`OPENAI_API_KEY` is required only for API-key mode. ChatGPT-mode development uses `dertek auth login` and the owner-only credential file outside the repository. The TypeSafe key is optional but enables Jev routing. Keep API keys out of `~/.dertek/settings.json` and Git. As an alternative to `--env-file`, export the variables in the current shell before running Dertek.
 
 For active CLI development, an optional editable tool installation reflects source changes immediately:
 
 ```bash
-uv tool install --editable .
+uv tool install --force --editable /absolute/path/to/dertek
 ```
+
+For a fresh non-editable local build after source changes, use `uv cache clean dertek-cli` followed by `uv tool install --force --refresh /absolute/path/to/dertek`.
 
 See [`configuration.md`](configuration.md) for first-run creation, the complete `settings.json` schema, precedence, and supported providers.
 
@@ -75,7 +77,7 @@ See [`configuration.md`](configuration.md) for first-run creation, the complete 
 
 1. Create a `Tool` subclass in `src/dertek/tools/`.
 2. Define a JSON Schema `parameters` object.
-3. Implement `async execute(arguments)`.
+3. Implement `async execute(call_id, arguments)`.
 4. Register it in `build_default_registry()`.
 5. Decide which high-confidence routes should expose it.
 6. Add deterministic policy checks if the tool can mutate state.
@@ -107,3 +109,7 @@ Implement `DecisionEngine.intake`, `checkpoint`, and `verify` with the typed mod
 ## Testing philosophy
 
 Unit tests should not require API keys. Use fake providers and routers to test the agent loop. Integration tests that hit OpenAI or TypeSafe can be added separately and skipped unless explicit environment variables are present.
+
+## Developing authentication transports
+
+Keep OpenAI authentication behind the Responses transport boundary. Persist only the non-secret `openai_auth` setting and rebuild the transport on every process start and session resume. OAuth credentials belong only in the dedicated credential store. Tests must use mocked OAuth and model endpoints, verify refresh and restart behavior, and assert that secrets never enter settings, sessions, events, diagnostics, or errors.

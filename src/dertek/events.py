@@ -7,6 +7,10 @@ from typing import Any, Protocol
 
 
 class EventType(StrEnum):
+    AUTH_STARTED = "auth_started"
+    AUTH_FINISHED = "auth_finished"
+    AUTH_FAILED = "auth_failed"
+    AUTH_LOGGED_OUT = "auth_logged_out"
     RUN_STARTED = "run_started"
     RUN_FINISHED = "run_finished"
     ROUTE = "route"
@@ -19,6 +23,7 @@ class EventType(StrEnum):
     TOOL_FINISHED = "tool_finished"
     TOOL_DENIED = "tool_denied"
     APPROVAL_REQUIRED = "approval_required"
+    TOOL_AUTO_APPROVED = "tool_auto_approved"
     INFO = "info"
     ERROR = "error"
 

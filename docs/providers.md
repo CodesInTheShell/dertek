@@ -13,7 +13,7 @@ Provider-specific SDK objects do not escape the provider package.
 
 ## OpenAI
 
-`OpenAIProvider` uses the Responses API and custom function tools. Tool calls are normalized into Dertek's `ToolCall` model. OpenAI response IDs are returned as opaque continuation tokens so the core can continue a multi-step turn without knowing OpenAI internals.
+`OpenAIProvider` uses Responses-style requests and custom function tools. Tool calls are normalized into Dertek's `ToolCall` model. API-key mode exposes OpenAI response IDs as opaque continuation tokens. ChatGPT mode uses local normalized-item replay because its requests set `store: false`.
 
 Environment:
 
@@ -54,3 +54,21 @@ src/dertek/providers/gemini.py
 ```
 
 Any provider-specific continuation mechanism should be translated to/from the generic `continuation_token` or handled internally by that provider.
+
+## OpenAI authentication transports
+
+The stable `OpenAIProvider` delegates to one of two Responses transports:
+
+- `openai_auth=api-key` calls `https://api.openai.com/v1/responses`.
+- `openai_auth=chatgpt` calls `https://chatgpt.com/backend-api/codex/responses`.
+
+ChatGPT mode uses OAuth bearer credentials, the ChatGPT account header, streaming, and `store: false`. It omits unsupported temperature and explicit maximum-output-token parameters, sends structured input items, and locally replays completed messages, reasoning items, tool calls, and tool results during the active process. Its stream parser handles text deltas, `response.output_item.done`, completion, incomplete, and failure events. Both transports normalize responses into the same Dertek models, so Jev and the agent loop do not change. The Codex CLI is not installed, imported, or executed.
+
+```bash
+dertek auth login
+dertek --auth chatgpt
+dertek --auth api-key
+dertek auth status
+dertek auth logout
+dertek models --auth chatgpt
+```

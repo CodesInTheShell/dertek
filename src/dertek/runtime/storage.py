@@ -29,6 +29,33 @@ class AppPaths:
     def sessions_dir(self) -> Path:
         return self.root / "sessions"
 
+    @property
+    def auth_dir(self) -> Path:
+        return self.root / "auth"
+
+    @property
+    def openai_auth_file(self) -> Path:
+        return self.auth_dir / "openai.json"
+
+
+def write_json_atomic(path: Path, value: dict[str, Any]) -> None:
+    """Write owner-only JSON without exposing a partially-written file."""
+    path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    path.parent.chmod(0o700)
+    fd, temporary = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=path.parent)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            os.chmod(temporary, 0o600)
+            json.dump(value, handle, indent=2, sort_keys=True)
+            handle.write("\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary, path)
+        path.chmod(0o600)
+    except Exception:
+        Path(temporary).unlink(missing_ok=True)
+        raise
+
 
 def _default_settings() -> dict[str, Any]:
     return {
@@ -61,20 +88,7 @@ class SessionStore:
 
     @staticmethod
     def _write_json(path: Path, value: dict[str, Any]) -> None:
-        path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
-        fd, temporary = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=path.parent)
-        try:
-            with os.fdopen(fd, "w", encoding="utf-8") as handle:
-                os.chmod(temporary, 0o600)
-                json.dump(value, handle, indent=2, sort_keys=True)
-                handle.write("\n")
-                handle.flush()
-                os.fsync(handle.fileno())
-            os.replace(temporary, path)
-            path.chmod(0o600)
-        except Exception:
-            Path(temporary).unlink(missing_ok=True)
-            raise
+        write_json_atomic(path, value)
 
     def save(self, session: Session) -> None:
         self.ensure()
@@ -153,3 +167,26 @@ def load_settings(paths: AppPaths | None = None) -> Settings:
     for field in environment.model_fields_set:
         merged[field] = getattr(environment, field)
     return Settings(**merged)
+
+
+def update_saved_settings(paths: AppPaths | None = None, **updates: Any) -> Settings:
+    """Persist non-secret settings without copying environment values."""
+    paths = paths or AppPaths.default()
+    SessionStore(paths).ensure()
+    try:
+        with paths.settings_file.open(encoding="utf-8") as handle:
+            saved = json.load(handle)
+    except json.JSONDecodeError as exc:
+        raise ConfigurationError(f"Invalid JSON in {paths.settings_file}") from exc
+    if not isinstance(saved, dict):
+        raise ConfigurationError(f"Settings must be a JSON object: {paths.settings_file}")
+    unknown = set(updates) - set(Settings.model_fields)
+    if unknown:
+        raise ConfigurationError(f"Unknown setting(s): {', '.join(sorted(unknown))}")
+    candidate = {**saved, **updates}
+    try:
+        validated = Settings(**candidate)
+    except ValueError as exc:
+        raise ConfigurationError(str(exc)) from exc
+    write_json_atomic(paths.settings_file, candidate)
+    return validated

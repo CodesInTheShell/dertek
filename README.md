@@ -62,27 +62,107 @@ uv tool install --force .
 dertek version
 ```
 
-If `dertek` is not found, run `uv tool list` first. If Dertek is absent, run `uv tool install .` from the clone. If it is installed but not discoverable, run `uv tool update-shell` and restart the terminal. The update-shell command configures `PATH`; it does not install Dertek. See the [installation guide](docs/installation.md) for detailed troubleshooting, updating, editable installs, and removal.
+If `dertek` is not found, run `uv tool list` first. If Dertek is absent, run `uv tool install .` from the clone. If it is installed but not discoverable, run `uv tool update-shell` and restart the terminal. The update-shell command configures `PATH`; it does not install Dertek. See the [installation guide](docs/installation.md) for detailed troubleshooting, updating, and removal.
 
-Export credentials through your shell or use an OS credential manager:
+### Common installation troubleshooting
+
+- **`dertek: command not found`:** check `uv tool list`, then run `uv tool update-shell` and restart the terminal.
+- **Recently pulled code is not taking effect:** uv may be reusing a cached local build. Clean and refresh the non-editable installation using the commands in the [installation troubleshooting guide](docs/installation.md#troubleshooting-stale-code-after-an-update).
+- **ChatGPT login opens an invalid authorization page:** refresh the installed tool first, then retry `dertek auth login`.
+
+The detailed [installation guide](docs/installation.md) also covers updating, stale package caches, contributor editable installs, credentials, and removal.
+
+## Choose how to authenticate with OpenAI
+
+Dertek supports two explicit OpenAI authentication modes. In both modes, export your TypeSafe key to enable Jev:
+
+```bash
+export TYPESAFE_API_KEY="your-typesafe-key"
+```
+
+### Option 1: Sign in with ChatGPT
+
+Use this when you want Dertek model calls to use your ChatGPT subscription limits instead of an OpenAI API key:
+
+```bash
+dertek auth login
+# For SSH, containers, or a headless terminal:
+dertek auth login --device-code
+
+dertek auth status
+dertek doctor
+```
+
+Browser login opens an OpenAI sign-in page. Device login prints a URL and one-time code. A successful login saves `"openai_auth": "chatgpt"` in `~/.dertek/settings.json`, so future `dertek` commands use ChatGPT automatically. To select it for only one command, use `dertek --auth chatgpt`.
+
+Browser login temporarily listens on the registered local callback ports `1455` or `1457`. If both ports are occupied, close the program using them and retry, or use `dertek auth login --device-code`. If you updated Dertek but still see an invalid authorization request, refresh the installed tool with `uv tool install --force .` from the Dertek checkout.
+
+### Option 2: Export an OpenAI API key
+
+Use this when you want normal OpenAI API billing:
 
 ```bash
 export OPENAI_API_KEY="your-openai-key"
 export TYPESAFE_API_KEY="your-typesafe-key"
-dertek doctor
+dertek --auth api-key
 ```
 
-`OPENAI_API_KEY` is required for the coding model. `TYPESAFE_API_KEY` enables Jev routing; without it, Dertek uses its heuristic router. Do not put either key in `~/.dertek/settings.json`. An installed tool does not automatically read the `.env` file in the Dertek source clone when launched from another project.
+API-key mode is the built-in default. You can also set `DERTEK_OPENAI_AUTH=api-key`. Dertek never silently switches between API billing and ChatGPT subscription usage.
+
+An installed uv tool reads exported variables from the shell where you start it. It does not automatically read the `.env` file in the Dertek source clone when launched from another project.
+
+### Switch between ChatGPT and API-key authentication
+
+Use `--auth` to select the authentication mode for one run:
+
+```bash
+# Use saved ChatGPT credentials for this run:
+dertek --auth chatgpt
+
+# Use OPENAI_API_KEY for this run:
+export OPENAI_API_KEY="your-openai-key"
+dertek --auth api-key
+```
+
+The CLI flag does not overwrite your saved default. For a persistent choice, set `openai_auth` in `~/.dertek/settings.json`:
+
+```json
+{
+  "openai_auth": "chatgpt"
+}
+```
+
+Use `"api-key"` instead to make API-key authentication the default. Running `dertek auth login` successfully also saves `chatgpt` as the default.
+
+Switching to API-key mode does not delete your ChatGPT OAuth credentials. They remain owner-only in `~/.dertek/auth/openai.json`, allowing you to switch back later with `dertek --auth chatgpt`. To remove the saved ChatGPT credentials completely, run:
+
+```bash
+dertek auth logout
+```
+
+Logout removes the OAuth credentials but does not provide or configure an API key. Export `OPENAI_API_KEY` and select `api-key` before the next run. Check the active mode and credential status with `dertek doctor` and `dertek auth status`.
 
 ## Use Dertek in a project
 
 Run Dertek from the project you want it to work on:
 
+With ChatGPT sign-in already completed:
+
+```bash
+cd /path/to/another-project
+export TYPESAFE_API_KEY="your-typesafe-key"
+dertek --auth chatgpt
+# After login has saved the setting, plain `dertek` uses ChatGPT too:
+dertek
+```
+
+Or with API-key authentication:
+
 ```bash
 cd /path/to/another-project
 export OPENAI_API_KEY="your-openai-key"
 export TYPESAFE_API_KEY="your-typesafe-key"
-dertek
+dertek --auth api-key
 ```
 
 The current directory becomes the workspace. Alternatively, use `--workspace` or `-C` without changing directories:
@@ -105,6 +185,7 @@ Dertek creates `~/.dertek/settings.json` the first time you run a command such a
 ```json
 {
   "provider": "openai",
+  "openai_auth": "chatgpt",
   "small_model": "gpt-5.6-luna",
   "small_reasoning_effort": "high",
   "large_model": "gpt-5.6-terra",
@@ -120,7 +201,21 @@ Dertek creates `~/.dertek/settings.json` the first time you run a command such a
 }
 ```
 
-Change `small_model`, `large_model`, and their reasoning efforts to customize the two tiers. Keep `OPENAI_API_KEY` and `TYPESAFE_API_KEY` in environment variables or an OS credential manager—never add API keys to `settings.json`.
+Use `"openai_auth": "chatgpt"` after `dertek auth login`, or `"openai_auth": "api-key"` with an exported `OPENAI_API_KEY`. Use `settings.json` for non-secret defaults you want on every run, such as authentication mode, models, reasoning effort, routing thresholds, and approval mode. Use CLI flags for temporary per-command overrides. Never put API keys or OAuth tokens in `settings.json`.
+
+Approval modes control shell authorization:
+
+- `on-request` (default) asks before potentially modifying or ambiguous shell commands.
+- `never` denies those commands instead of asking, which suits fail-closed read-only CI checks.
+- `auto` runs commands that would normally ask, without pausing for input; deterministic dangerous-command denials still apply.
+
+For a one-off unattended run:
+
+```bash
+dertek --approval-mode auto "run the tests and complete the requested task"
+```
+
+**Caution:** Auto-approved shell commands are not sandboxed and run with the permissions of the Dertek process. Use `auto` only with trusted repositories, preferably inside an isolated CI runner or container. Tool failures, timeouts, model errors, safety denials, and execution limits can still prevent completion. See [Security: approval modes](docs/security.md#approval-modes).
 
 Dertek deliberately gives Luna `high` reasoning for inexpensive small tasks and Terra `low` reasoning for the main large-task path. The Responses API field is `reasoning: {"effort": "..."}`; valid Terra/Luna values are `none`, `low`, `medium`, `high`, `xhigh`, and `max`.
 
@@ -139,12 +234,14 @@ Dertek creates owner-only local state at `~/.dertek/`:
 
 ```text
 ~/.dertek/
-├── settings.json       # non-secret defaults
+├── settings.json       # non-secret defaults, including openai_auth
+├── auth/
+│   └── openai.json     # owner-only ChatGPT OAuth credentials
 └── sessions/
     └── <session-id>.json
 ```
 
-Installation alone does not create this directory. The first command that initializes local state—such as `dertek doctor`, `dertek`, or `dertek sessions list`—creates it. Each agent invocation creates a persisted session. The session file contains the workspace, provider continuation state, prompts, responses, tool calls, approval decisions, and raw tool output so a future desktop can restore the complete timeline. Treat it as sensitive local data. API keys are never saved there.
+Installation alone does not create this directory. The first command that initializes local state—such as `dertek doctor`, `dertek`, or `dertek sessions list`—creates it. Each agent invocation creates a persisted session. The session file contains the workspace, continuation metadata, prompts, responses, tool calls, approval decisions, and raw tool output so a future desktop can restore the timeline. Treat it as sensitive local data. API keys and OAuth tokens are never saved there. In v0.1, ChatGPT's `store: false` replay buffer is process-local, so resuming after restarting Dertek restores the transcript but does not yet recreate the model's complete prior context.
 
 ```bash
 dertek --session <session-id>
@@ -152,7 +249,7 @@ dertek sessions list
 dertek sessions delete <session-id>
 ```
 
-Configuration priority is CLI flags, then `DERTEK_*` environment variables, then `~/.dertek/settings.json`, then built-in defaults. API credentials are separate: pass `.env` with `uv run --env-file .env ...`, export the keys in your shell, or use an OS credential store. Never put API keys in `settings.json`.
+Configuration priority is CLI flags, then `DERTEK_*` environment variables, then `~/.dertek/settings.json`, then built-in defaults. Use settings for persistent non-secret choices and CLI flags for temporary overrides. API keys stay in exported variables; ChatGPT OAuth credentials stay in `~/.dertek/auth/openai.json`.
 
 See [`docs/configuration.md`](docs/configuration.md) for the complete default JSON, environment-variable mapping, first-run behavior, and provider support.
 
@@ -160,6 +257,11 @@ Useful commands:
 
 ```bash
 dertek doctor
+dertek auth login
+dertek auth login --device-code
+dertek auth status
+dertek auth logout
+dertek models --auth chatgpt
 dertek version
 dertek --help
 ```

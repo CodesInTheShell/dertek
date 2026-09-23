@@ -33,6 +33,13 @@ class ShellTool(Tool):
     async def execute(self, call_id: str, arguments: dict[str, Any]) -> ToolResult:
         command = arguments["command"]
         decision = self.policy.evaluate_shell(command)
+        if decision.action == "deny":
+            return ToolResult(
+                call_id,
+                self.name,
+                decision.reason,
+                is_error=True,
+            )
 
         def run() -> subprocess.CompletedProcess[str]:
             return subprocess.run(

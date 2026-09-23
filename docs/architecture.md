@@ -77,14 +77,14 @@ LLM provider
 - `dertek.providers`: provider-neutral contracts and OpenAI implementation.
 - `dertek.router`: typed intake/checkpoint/verification decisions, TypeSafe Jev adapter, fallback engine, and confidence gates.
 - `dertek.tools`: tool contracts, registry, file/search/shell/git tools.
-- `dertek.hooks`: lifecycle decisions around tool execution.
+- `dertek.hooks`: lifecycle decisions around tool execution, including ask/deny/auto-approve policy metadata.
 - `dertek.security`: workspace path boundaries and command policy.
 
 ## State strategy
 
-OpenAI Responses uses a continuation token (`previous_response_id`) for the current model context. The provider contract exposes this as an opaque `continuation_token`. A Luna-to-Terra escalation clears it and constructs a provider-neutral evidence handoff so model-specific state never crosses tiers.
+API-key mode uses the public Responses API continuation token (`previous_response_id`), exposed to the core as an opaque `continuation_token`. ChatGPT mode sends `store: false`, so its transport instead replays normalized input/output items locally and never submits an unusable server continuation ID. A Luna-to-Terra escalation clears model-specific context and constructs a provider-neutral evidence handoff so state never crosses tiers.
 
-`Session` is serializable. The runtime persists full sessions under `~/.dertek/sessions/`; provider continuation state remains opaque to the core.
+`Session` is serializable. The runtime persists prompts, final responses, decisions, tool calls/results, approvals, model metadata, and continuation metadata under `~/.dertek/sessions/`. The saved transcript restores the UI timeline. In v0.1, ChatGPT's normalized provider replay buffer is process-local, so resuming a saved session after restarting Dertek does not yet recreate the model's complete prior context; durable provider-state reconstruction remains desktop-readiness work.
 
 ## Patch engine
 
@@ -97,3 +97,7 @@ Unified diff + non-Git/no executable -> internal engine
 ```
 
 The internal engine handles UTF-8 add, update, delete, and rename operations. It validates exact hunk context in memory and commits changes through atomic replacements with rollback. Git remains an optional enhancement for compatible unified diffs and for the separate `git_diff` tool.
+
+## OpenAI authentication boundary
+
+Runtime construction selects an OpenAI Responses transport. API-key authentication targets the public API; ChatGPT authentication targets the Codex Responses backend. Authentication, refresh, structured `store: false` replay, and streaming event normalization remain inside the provider package. Dertek handles text deltas, completed output items, tool calls, incomplete responses, and failures without requiring the Codex CLI. The core agent, Jev controller, tools, approvals, sessions, and UI event boundary are unchanged.

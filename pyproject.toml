@@ -8,6 +8,7 @@ authors = [
   { name = "Dertek Contributors" }
 ]
 dependencies = [
+  "httpx>=0.28.0",
   "openai>=3.15.0",
   "pydantic>=2.10.0",
   "pydantic-settings>=2.7.0",

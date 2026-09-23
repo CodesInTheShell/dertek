@@ -9,7 +9,7 @@ The desktop application should consume Dertek Core rather than invoke terminal p
 - provider abstraction
 - router abstraction
 - explicit approval handler
-- persisted, serializable session object with opaque provider continuation state and transcript
+- persisted, serializable session transcript and provider continuation metadata
 - structured tool calls and results
 
 ## Suggested desktop boundary
@@ -36,4 +36,4 @@ Desktop UI
 - router diagnostics with confidence display
 - settings and API key storage
 
-Before building the desktop shell, add cancellation and a stable event schema version. The desktop should call `dertek.runtime.build_runtime()` with its own event callback and approval handler; it must not invoke or scrape the CLI.
+Before building the desktop shell, add cancellation, a stable event schema version, and durable reconstruction of ChatGPT's normalized `store: false` replay buffer when resuming after a process restart. The desktop should call `dertek.runtime.build_runtime()` with its own event callback and approval handler; it must not invoke or scrape the CLI.

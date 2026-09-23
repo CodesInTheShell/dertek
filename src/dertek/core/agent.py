@@ -259,6 +259,16 @@ class Agent:
             record.approved = await self.approval_handler(call.name, hook_decision.reason)
             if not record.approved:
                 return self.tools.denied_result(call, "User did not approve the tool call")
+        elif hook_decision.auto_approved:
+            record.approval_reason = hook_decision.reason
+            record.approved = True
+            self.events.emit(
+                AgentEvent(
+                    EventType.TOOL_AUTO_APPROVED,
+                    f"Auto-approved {call.name}",
+                    {"tool": call.name, "reason": hook_decision.reason},
+                )
+            )
         return await self.tools.execute(call)
 
     def _initial_tier(self, decision: IntakeDecision) -> ModelTier:

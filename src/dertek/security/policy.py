@@ -13,6 +13,7 @@ class PolicyDecision:
     action: PolicyAction
     reason: str
     argv: tuple[str, ...] | None = None
+    auto_approved: bool = False
 
 
 class CommandPolicy:
@@ -40,6 +41,12 @@ class CommandPolicy:
         if argv is not None:
             return PolicyDecision("allow", "Recognized direct read-only command", tuple(argv))
 
+        if approval_mode == "auto":
+            return PolicyDecision(
+                "allow",
+                "Command auto-approved by approval mode 'auto'",
+                auto_approved=True,
+            )
         if approval_mode == "never":
             return PolicyDecision("deny", "Command is not auto-approved and approval mode is 'never'")
         return PolicyDecision("ask", f"Shell command requires approval: {stripped}")

@@ -10,6 +10,10 @@ class ProviderNotImplementedError(DertekError):
     """Requested provider is planned but not implemented yet."""
 
 
+class AuthenticationError(DertekError):
+    """Authentication is missing, expired, or could not be refreshed."""
+
+
 class ToolExecutionError(DertekError):
     """Tool execution failed."""
 

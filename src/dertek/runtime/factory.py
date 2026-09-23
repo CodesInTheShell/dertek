@@ -4,6 +4,7 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 from uuid import uuid4
 
+from dertek.config import ApprovalMode, OpenAIAuthMode
 from dertek.core.agent import Agent, ApprovalHandler, deny_approval
 from dertek.core.session import Session
 from dertek.events import AgentEvent, EventSink, EventType, NullEventSink
@@ -75,9 +76,11 @@ def build_runtime(
     workspace: Path,
     *,
     provider_name: str | None = None,
+    openai_auth: OpenAIAuthMode | str | None = None,
     model: str | None = None,
     small_model: str | None = None,
     large_model: str | None = None,
+    approval_mode: ApprovalMode | str | None = None,
     session_id: str | None = None,
     events: EventSink | None = None,
     approval_handler: ApprovalHandler = deny_approval,
@@ -88,12 +91,16 @@ def build_runtime(
     settings = load_settings(store.paths)
     if provider_name:
         settings = settings.model_copy(update={"provider": provider_name})
+    if openai_auth:
+        settings = settings.model_copy(update={"openai_auth": OpenAIAuthMode(openai_auth)})
     if model:
         settings = settings.model_copy(update={"model": model})
     if small_model:
         settings = settings.model_copy(update={"small_model": small_model})
     if large_model:
         settings = settings.model_copy(update={"large_model": large_model, "model": None})
+    if approval_mode:
+        settings = settings.model_copy(update={"approval_mode": ApprovalMode(approval_mode)})
 
     if session_id:
         session = store.load(session_id)
@@ -104,13 +111,20 @@ def build_runtime(
     else:
         session = Session(workspace=workspace)
     session.provider = settings.provider
+    session.auth_mode = settings.openai_auth.value if settings.provider == "openai" else None
     session.model = settings.effective_large_model
 
     contextual_events = ContextualEventSink(events)
+    provider = build_provider(
+        settings.provider, openai_auth=settings.openai_auth, paths=store.paths
+    )
+    if hasattr(provider, "validate_model"):
+        provider.validate_model(settings.small_model)
+        provider.validate_model(settings.effective_large_model)
     policy = CommandPolicy()
     agent = Agent(
         settings=settings,
-        provider=build_provider(settings.provider),
+        provider=provider,
         router=build_router(contextual_events),
         tools=build_default_registry(
             str(workspace), timeout_seconds=settings.shell_timeout_seconds, policy=policy

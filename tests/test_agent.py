@@ -5,9 +5,11 @@ import pytest
 from dertek.config import Settings
 from dertek.core.agent import Agent
 from dertek.core.session import Session
+from dertek.events import AgentEvent, EventType
 from dertek.hooks.manager import HookManager
 from dertek.models import AgentRequest, AgentResponse, ToolCall
 from dertek.router.models import ModelTier, RouteDecision, TaskRoute
+from dertek.runtime.factory import ContextualEventSink
 from dertek.security.policy import CommandPolicy
 from dertek.tools.registry import build_default_registry
 
@@ -125,3 +127,73 @@ async def test_agent_selects_model_tier_with_large_as_safe_fallback(
     assert provider.request.reasoning_effort == expected_effort
     assert agent.session.history[0].model == expected_model
     assert agent.session.history[0].reasoning_effort == expected_effort
+
+
+class AutoShellProvider:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    async def generate(self, request: AgentRequest) -> AgentResponse:
+        del request
+        self.calls += 1
+        if self.calls == 1:
+            command = (
+                "python -c \"from pathlib import Path; "
+                "Path('auto.txt').write_text('done')\""
+            )
+            return AgentResponse(
+                "",
+                [ToolCall("shell-1", "shell", {"command": command})],
+                "response-1",
+            )
+        return AgentResponse("completed", continuation_token="response-2")
+
+
+class EventCollector:
+    def __init__(self) -> None:
+        self.events: list[AgentEvent] = []
+
+    def emit(self, event: AgentEvent) -> None:
+        self.events.append(event)
+
+
+@pytest.mark.asyncio
+async def test_auto_mode_runs_without_prompt_and_records_approval(tmp_path: Path) -> None:
+    async def unexpected_approval(tool_name: str, detail: str) -> bool:
+        raise AssertionError(f"approval handler called for {tool_name}: {detail}")
+
+    collector = EventCollector()
+    events = ContextualEventSink(collector)
+    run_id = events.begin("auto-session")
+    settings = Settings(
+        approval_mode="auto",
+        max_steps=3,
+        max_jev_calls_per_turn=1,
+        jev_verification_enabled=False,
+    )
+    provider = AutoShellProvider()
+    agent = Agent(
+        settings=settings,
+        provider=provider,
+        router=FakeRouter(),
+        tools=build_default_registry(str(tmp_path)),
+        hooks=HookManager(CommandPolicy(), approval_mode="auto"),
+        session=Session(tmp_path),
+        events=events,
+        approval_handler=unexpected_approval,
+    )
+
+    result = await agent.run("create the marker and finish")
+
+    assert result.text == "completed"
+    assert (tmp_path / "auto.txt").read_text() == "done"
+    record = agent.session.history[0].tools[0]
+    assert record.approved is True
+    assert record.approval_reason == "Command auto-approved by approval mode 'auto'"
+    auto_event = next(
+        event for event in collector.events if event.type == EventType.TOOL_AUTO_APPROVED
+    )
+    assert auto_event.session_id == "auto-session"
+    assert auto_event.run_id == run_id
+    assert isinstance(auto_event.sequence, int)
+    assert not any(event.type == EventType.APPROVAL_REQUIRED for event in collector.events)
