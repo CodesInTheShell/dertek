@@ -277,7 +277,7 @@ class Agent:
     def _model_config(self, tier: ModelTier) -> tuple[str, str]:
         if tier == ModelTier.SMALL:
             return self.settings.small_model, self.settings.small_reasoning_effort
-        return self.settings.effective_large_model, self.settings.large_reasoning_effort
+        return self.settings.large_model, self.settings.large_reasoning_effort
 
     def _judgment_confident(
         self, decision: IntakeDecision, name: str, *, high: bool = False

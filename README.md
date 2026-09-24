@@ -174,9 +174,9 @@ dertek -C /path/to/another-project "explain this project"
 Configure the two LLM tiers in `.env` or `~/.dertek/settings.json`:
 
 ```env
-DERTEK_SMALL_MODEL=gpt-5.6-luna
+DERTEK_SMALL_MODEL=gpt-6-luna
 DERTEK_SMALL_REASONING_EFFORT=high
-DERTEK_LARGE_MODEL=gpt-5.6-terra
+DERTEK_LARGE_MODEL=gpt-6-sol
 DERTEK_LARGE_REASONING_EFFORT=low
 ```
 
@@ -186,9 +186,9 @@ Dertek creates `~/.dertek/settings.json` the first time you run a command such a
 {
   "provider": "openai",
   "openai_auth": "chatgpt",
-  "small_model": "gpt-5.6-luna",
+  "small_model": "gpt-6-luna",
   "small_reasoning_effort": "high",
-  "large_model": "gpt-5.6-terra",
+  "large_model": "gpt-6-sol",
   "large_reasoning_effort": "low",
   "router_high_confidence": 0.9,
   "router_medium_confidence": 0.65,
@@ -217,9 +217,9 @@ dertek --approval-mode auto "run the tests and complete the requested task"
 
 **Caution:** Auto-approved shell commands are not sandboxed and run with the permissions of the Dertek process. Use `auto` only with trusted repositories, preferably inside an isolated CI runner or container. Tool failures, timeouts, model errors, safety denials, and execution limits can still prevent completion. See [Security: approval modes](docs/security.md#approval-modes).
 
-Dertek deliberately gives Luna `high` reasoning for inexpensive small tasks and Terra `low` reasoning for the main large-task path. The Responses API field is `reasoning: {"effort": "..."}`; valid Terra/Luna values are `none`, `low`, `medium`, `high`, `xhigh`, and `max`.
+Dertek deliberately gives GPT-6 Luna `high` reasoning for inexpensive small tasks and GPT-6 Sol `low` reasoning for the main large-task path. The Responses API field is `reasoning: {"effort": "..."}`. Model availability and accepted effort values are checked by the selected transport and account.
 
-Jev selects `small` for narrow, well-defined, low-risk requests and `large` for coding, debugging, modification, ambiguous, or multi-step work. A missing Jev key or low-confidence model decision always falls back to the large model. The original `DERTEK_MODEL` and `--model` remain supported as legacy large-model overrides.
+Jev selects `small` for narrow, well-defined, low-risk requests and `large` for coding, debugging, modification, ambiguous, or multi-step work. A missing Jev key or low-confidence model decision always falls back to the large model.
 
 One-shot usage:
 
@@ -268,7 +268,7 @@ dertek --help
 
 ## Router behavior
 
-When `TYPESAFE_API_KEY` is configured, Jev controls bounded decisions while Luna and Terra perform generative work. Intake selects the route, workflow, tool profile, model tier, and verification level in one batched request. Event-driven checkpoints may escalate Luna to Terra after failures, mutations, scope expansion, or the small-model step limit. Final verification runs only when it can change the outcome. Routes are:
+When `TYPESAFE_API_KEY` is configured, Jev controls bounded decisions while Luna and Sol perform generative work. Intake selects the route, workflow, tool profile, model tier, and verification level in one batched request. Event-driven checkpoints may escalate Luna to Sol after failures, mutations, scope expansion, or the small-model step limit. Final verification runs only when it can change the outcome. Routes are:
 
 - `chat`
 - `code`

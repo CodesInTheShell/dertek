@@ -77,7 +77,6 @@ def build_runtime(
     *,
     provider_name: str | None = None,
     openai_auth: OpenAIAuthMode | str | None = None,
-    model: str | None = None,
     small_model: str | None = None,
     large_model: str | None = None,
     approval_mode: ApprovalMode | str | None = None,
@@ -93,12 +92,10 @@ def build_runtime(
         settings = settings.model_copy(update={"provider": provider_name})
     if openai_auth:
         settings = settings.model_copy(update={"openai_auth": OpenAIAuthMode(openai_auth)})
-    if model:
-        settings = settings.model_copy(update={"model": model})
     if small_model:
         settings = settings.model_copy(update={"small_model": small_model})
     if large_model:
-        settings = settings.model_copy(update={"large_model": large_model, "model": None})
+        settings = settings.model_copy(update={"large_model": large_model})
     if approval_mode:
         settings = settings.model_copy(update={"approval_mode": ApprovalMode(approval_mode)})
 
@@ -112,7 +109,7 @@ def build_runtime(
         session = Session(workspace=workspace)
     session.provider = settings.provider
     session.auth_mode = settings.openai_auth.value if settings.provider == "openai" else None
-    session.model = settings.effective_large_model
+    session.model = settings.large_model
 
     contextual_events = ContextualEventSink(events)
     provider = build_provider(
@@ -120,7 +117,7 @@ def build_runtime(
     )
     if hasattr(provider, "validate_model"):
         provider.validate_model(settings.small_model)
-        provider.validate_model(settings.effective_large_model)
+        provider.validate_model(settings.large_model)
     policy = CommandPolicy()
     agent = Agent(
         settings=settings,

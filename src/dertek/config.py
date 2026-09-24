@@ -31,12 +31,10 @@ class Settings(BaseSettings):
 
     provider: Literal["openai", "anthropic", "gemini"] = "openai"
     openai_auth: OpenAIAuthMode = OpenAIAuthMode.API_KEY
-    small_model: str = "gpt-5.6-luna"
-    large_model: str = "gpt-5.6-terra"
+    small_model: str = "gpt-6-luna"
+    large_model: str = "gpt-6-sol"
     small_reasoning_effort: ReasoningEffort = "high"
     large_reasoning_effort: ReasoningEffort = "low"
-    # Backward-compatible override for the original single-model configuration.
-    model: str | None = None
     router_high_confidence: float = Field(default=0.90, ge=0.0, le=1.0)
     router_medium_confidence: float = Field(default=0.65, ge=0.0, le=1.0)
     max_steps: int = Field(default=12, ge=1, le=100)
@@ -45,10 +43,6 @@ class Settings(BaseSettings):
     jev_verification_enabled: bool = True
     shell_timeout_seconds: int = Field(default=120, ge=1, le=3600)
     approval_mode: ApprovalMode = ApprovalMode.ON_REQUEST
-
-    @property
-    def effective_large_model(self) -> str:
-        return self.model or self.large_model
 
     def workspace(self, value: str | Path | None = None) -> Path:
         return Path(value or Path.cwd()).expanduser().resolve()

@@ -62,7 +62,7 @@ LLM provider
              |
              +--> meaningful change -> Jev checkpoint
              |                         |
-             |                         +--> continue / Luna -> Terra
+             |                         +--> continue / Luna -> Sol
              |
              +--> routine success ----> LLM
                                        |
@@ -82,7 +82,7 @@ LLM provider
 
 ## State strategy
 
-API-key mode uses the public Responses API continuation token (`previous_response_id`), exposed to the core as an opaque `continuation_token`. ChatGPT mode sends `store: false`, so its transport instead replays normalized input/output items locally and never submits an unusable server continuation ID. A Luna-to-Terra escalation clears model-specific context and constructs a provider-neutral evidence handoff so state never crosses tiers.
+API-key mode uses the public Responses API continuation token (`previous_response_id`), exposed to the core as an opaque `continuation_token`. ChatGPT mode sends `store: false`, so its transport instead replays normalized input/output items locally and never submits an unusable server continuation ID. A Luna-to-Sol escalation clears model-specific context and constructs a provider-neutral evidence handoff so state never crosses tiers.
 
 `Session` is serializable. The runtime persists prompts, final responses, decisions, tool calls/results, approvals, model metadata, and continuation metadata under `~/.dertek/sessions/`. The saved transcript restores the UI timeline. In v0.1, ChatGPT's normalized provider replay buffer is process-local, so resuming a saved session after restarting Dertek does not yet recreate the model's complete prior context; durable provider-state reconstruction remains desktop-readiness work.
 

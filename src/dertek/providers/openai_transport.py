@@ -13,6 +13,8 @@ from dertek.providers.openai_auth import OpenAIAuthManager
 CHATGPT_CODEX_BASE_URL = "https://chatgpt.com/backend-api/codex"
 CHATGPT_MODELS = frozenset(
     {
+        "gpt-6-sol",
+        "gpt-6-luna",
         "gpt-5.6",
         "gpt-5.6-sol",
         "gpt-5.6-terra",

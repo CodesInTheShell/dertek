@@ -45,7 +45,6 @@ def root(
     auth: Annotated[
         OpenAIAuthMode | None, typer.Option("--auth", help="OpenAI authentication mode.")
     ] = None,
-    model: Annotated[str | None, typer.Option("--model", help="Provider model name.")] = None,
     small_model: Annotated[
         str | None, typer.Option("--small-model", help="Model for Jev-classified small tasks.")
     ] = None,
@@ -72,7 +71,6 @@ def root(
             workspace,
             provider_name=provider,
             openai_auth=auth,
-            model=model,
             small_model=small_model,
             large_model=large_model,
             approval_mode=approval_mode,
@@ -111,7 +109,7 @@ def doctor() -> None:
     table.add_row("OpenAI authentication", settings.openai_auth.value)
     table.add_row("Small model", settings.small_model)
     table.add_row("Small reasoning", settings.small_reasoning_effort)
-    table.add_row("Large model", settings.effective_large_model)
+    table.add_row("Large model", settings.large_model)
     table.add_row("Large reasoning", settings.large_reasoning_effort)
     if settings.openai_auth == OpenAIAuthMode.CHATGPT:
         credentials = OpenAICredentialStore().load()

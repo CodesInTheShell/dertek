@@ -61,10 +61,10 @@ def test_environment_overrides_json_settings(tmp_path: Path, monkeypatch: pytest
     paths = AppPaths(tmp_path / ".dertek")
     store = SessionStore(paths)
     store.ensure()
-    paths.settings_file.write_text(json.dumps({"model": "json-model", "max_steps": 4}), encoding="utf-8")
-    monkeypatch.setenv("DERTEK_MODEL", "environment-model")
+    paths.settings_file.write_text(json.dumps({"large_model": "json-model", "max_steps": 4}), encoding="utf-8")
+    monkeypatch.setenv("DERTEK_LARGE_MODEL", "environment-model")
     settings = load_settings(paths)
-    assert settings.model == "environment-model"
+    assert settings.large_model == "environment-model"
     assert settings.max_steps == 4
 
 
@@ -94,29 +94,23 @@ def test_settings_file_contains_no_credentials(tmp_path: Path) -> None:
     assert not any("key" in key.lower() or "secret" in key.lower() for key in data)
 
 
-def test_new_large_model_setting_wins_over_legacy_file_key(tmp_path: Path) -> None:
+def test_existing_tier_model_settings_are_preserved(
+    tmp_path: Path,
+) -> None:
     paths = AppPaths(tmp_path / ".dertek")
     store = SessionStore(paths)
     store.ensure()
     paths.settings_file.write_text(
-        json.dumps({"model": "legacy-model", "large_model": "new-large-model"}),
+        json.dumps(
+            {
+                "small_model": "gpt-5.6-luna",
+                "large_model": "gpt-5.6-terra",
+            }
+        ),
         encoding="utf-8",
     )
 
     settings = load_settings(paths)
 
-    assert settings.effective_large_model == "new-large-model"
-
-
-def test_original_generated_model_migrates_to_terra_default(tmp_path: Path) -> None:
-    paths = AppPaths(tmp_path / ".dertek")
-    store = SessionStore(paths)
-    store.ensure()
-    paths.settings_file.write_text(json.dumps({"model": "gpt-5.5"}), encoding="utf-8")
-
-    settings = load_settings(paths)
-
     assert settings.small_model == "gpt-5.6-luna"
-    assert settings.effective_large_model == "gpt-5.6-terra"
-    assert settings.small_reasoning_effort == "high"
-    assert settings.large_reasoning_effort == "low"
+    assert settings.large_model == "gpt-5.6-terra"

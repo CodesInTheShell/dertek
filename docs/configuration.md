@@ -30,9 +30,9 @@ The resulting layout is:
 {
   "provider": "openai",
   "openai_auth": "api-key",
-  "small_model": "gpt-5.6-luna",
+  "small_model": "gpt-6-luna",
   "small_reasoning_effort": "high",
-  "large_model": "gpt-5.6-terra",
+  "large_model": "gpt-6-sol",
   "large_reasoning_effort": "low",
   "router_high_confidence": 0.9,
   "router_medium_confidence": 0.65,
@@ -45,7 +45,7 @@ The resulting layout is:
 }
 ```
 
-Jev chooses the initial tier and may escalate Luna to Terra after meaningful tool evidence. A confident small decision uses Luna/high. Large, uncertain, unavailable-Jev, and heuristic-fallback decisions use Terra/low. The Jev call ceiling reserves one intake, up to two checkpoints, and optional verification.
+Jev chooses the initial tier and may escalate Luna to Sol after meaningful tool evidence. A confident small decision uses Luna/high. Large, uncertain, unavailable-Jev, and heuristic-fallback decisions use Sol/low. The Jev call ceiling reserves one intake, up to two checkpoints, and optional verification.
 
 Valid reasoning effort values for the default models are `none`, `low`, `medium`, `high`, `xhigh`, and `max`.
 
@@ -63,7 +63,7 @@ Enable auto mode for one run with `dertek --approval-mode auto`, or persist `"ap
 
 From highest to lowest priority:
 
-1. CLI options such as `--provider`, `--small-model`, `--large-model`, `--approval-mode`, and the legacy `--model` large-model override.
+1. CLI options such as `--provider`, `--small-model`, `--large-model`, and `--approval-mode`.
 2. `DERTEK_*` environment variables. Contributors may also supply these with `uv run --env-file .env`.
 3. `~/.dertek/settings.json`.
 4. Built-in defaults.
@@ -73,9 +73,9 @@ Equivalent environment variables include:
 ```env
 DERTEK_PROVIDER=openai
 DERTEK_OPENAI_AUTH=api-key
-DERTEK_SMALL_MODEL=gpt-5.6-luna
+DERTEK_SMALL_MODEL=gpt-6-luna
 DERTEK_SMALL_REASONING_EFFORT=high
-DERTEK_LARGE_MODEL=gpt-5.6-terra
+DERTEK_LARGE_MODEL=gpt-6-sol
 DERTEK_LARGE_REASONING_EFFORT=low
 DERTEK_ROUTER_HIGH_CONFIDENCE=0.90
 DERTEK_ROUTER_MEDIUM_CONFIDENCE=0.65
