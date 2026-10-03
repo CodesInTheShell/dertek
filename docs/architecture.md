@@ -2,15 +2,15 @@
 
 ## Design rule
 
-**Dertek Core is the agent. The CLI is only a client of the core.**
+**Dertek Core is the agent. The CLI and web app are clients of the core.**
 
 ```text
-                 dertek-cli
-                     |
-                     | future
-              dertek-desktop
-                     |
-                     v
+            dertek-cli   dertek-web
+                  \       /
+                   \     /
+                    \   /
+                     \ /
+                      v
              Dertek Runtime
                      |
                 Dertek Core
@@ -23,7 +23,7 @@
                   Gemini later
 ```
 
-The runtime owns application assembly: settings, session persistence, providers, router, tools, hooks, callbacks, and approvals. The core never prints terminal UI directly. It emits `AgentEvent` objects. Each runtime event has a session ID, run ID, and monotonic sequence number. The CLI renders them with Rich; a desktop can subscribe to the same callback and render cards, timelines, approvals, diffs, and progress indicators.
+The runtime owns application assembly: settings, session persistence, providers, router, tools, hooks, callbacks, and approvals. The core never prints terminal UI directly. It emits `AgentEvent` objects. Each runtime event has a session ID, run ID, and monotonic sequence number. The CLI renders them with Rich; Flask forwards them to the browser over server-sent events.
 
 ## Request flow
 
@@ -74,6 +74,7 @@ LLM provider
 - `dertek.runtime`: UI-neutral construction, local settings/session storage, and contextual event callbacks.
 - `dertek.cli`: Typer/Rich interface, interactive REPL, approval UI.
 - `dertek.core`: agent loop, session, context building, events.
+- `dertek.web`: loopback-only Flask API, event stream, approvals, and mounted Vue interface.
 - `dertek.providers`: provider-neutral contracts and OpenAI implementation.
 - `dertek.router`: typed intake/checkpoint/verification decisions, TypeSafe Jev adapter, fallback engine, and confidence gates.
 - `dertek.tools`: tool contracts, registry, file/search/shell/git tools.

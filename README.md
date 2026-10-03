@@ -12,7 +12,7 @@ Dertek is an experimental agentic coding CLI built around a **two-speed architec
 - A **generative LLM** handles reasoning, code generation, debugging, and final responses.
 - Deterministic Python code handles tools, workspace boundaries, policy checks, events, and execution.
 
-`dertek-cli` is intentionally only an interface. The reusable agent lives behind the UI-neutral `dertek.runtime` assembly layer, so a future `dertek-desktop` can reuse the same runtime instead of reimplementing the agent or copying CLI setup.
+The CLI and local web app both use the reusable agent behind the UI-neutral `dertek.runtime` layer. A future desktop app can use the same runtime.
 
 ## Status
 
@@ -71,6 +71,16 @@ If `dertek` is not found, run `uv tool list` first. If Dertek is absent, run `uv
 - **ChatGPT login opens an invalid authorization page:** refresh the installed tool first, then retry `dertek auth login`.
 
 The detailed [installation guide](docs/installation.md) also covers updating, stale package caches, contributor editable installs, credentials, and removal.
+
+## Browser interface
+
+Dertek also has a local Flask and Vue interface. It serves the frontend from bundled files, so Node.js and a frontend build are not required:
+
+```bash
+dertek web --port 8765
+```
+
+Open [http://127.0.0.1:8765](http://127.0.0.1:8765), choose a workspace, and start a session. From a source checkout, use `uv run dertek web --port 8765`. Sign in with `dertek auth login` for ChatGPT, or export `OPENAI_API_KEY` before starting the web server for API-key mode. See the [web app guide](docs/web.md) for approvals, settings, and session behavior.
 
 ## Choose how to authenticate with OpenAI
 
@@ -310,6 +320,7 @@ v0.1 provides workspace path guards, deterministic command policy checks, and us
 Start with:
 
 - [`docs/installation.md`](docs/installation.md)
+- [`docs/web.md`](docs/web.md)
 - [`docs/architecture.md`](docs/architecture.md)
 - [`docs/configuration.md`](docs/configuration.md)
 - [`docs/router.md`](docs/router.md)

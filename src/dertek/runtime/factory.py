@@ -26,9 +26,9 @@ class ContextualEventSink:
         self.run_id: str | None = None
         self.sequence = 0
 
-    def begin(self, session_id: str) -> str:
+    def begin(self, session_id: str, run_id: str | None = None) -> str:
         self.session_id = session_id
-        self.run_id = uuid4().hex
+        self.run_id = run_id or uuid4().hex
         self.sequence = 0
         return self.run_id
 
@@ -54,8 +54,8 @@ class DertekRuntime:
     def session(self) -> Session:
         return self.agent.session
 
-    async def run(self, prompt: str) -> AgentRunResult:
-        run_id = self.events.begin(self.session.id)
+    async def run(self, prompt: str, *, run_id: str | None = None) -> AgentRunResult:
+        run_id = self.events.begin(self.session.id, run_id)
         self.events.emit(AgentEvent(EventType.RUN_STARTED, "Run started", {"prompt": prompt}))
         try:
             result = await self.agent.run(prompt)
