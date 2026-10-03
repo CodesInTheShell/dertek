@@ -8,7 +8,7 @@ from dertek.core.context import build_decision_instructions
 from dertek.core.session import Session, SessionTurn, ToolRecord, utc_now
 from dertek.events import AgentEvent, EventSink, EventType, NullEventSink
 from dertek.hooks.manager import HookManager
-from dertek.models import AgentRequest, AgentRunResult
+from dertek.models import AgentRequest, AgentRunResult, ToolCall
 from dertek.providers.base import LLMProvider
 from dertek.router.base import DecisionEngine
 from dertek.router.models import (
@@ -27,11 +27,11 @@ from dertek.router.models import (
 from dertek.router.thresholds import RouterThresholds
 from dertek.tools.registry import ToolRegistry
 
-ApprovalHandler = Callable[[str, str], Awaitable[bool]]
+ApprovalHandler = Callable[[ToolCall, str], Awaitable[bool]]
 
 
-async def deny_approval(tool_name: str, detail: str) -> bool:
-    del tool_name, detail
+async def deny_approval(call: ToolCall, detail: str) -> bool:
+    del call, detail
     return False
 
 
@@ -255,8 +255,8 @@ class Agent:
             return self.tools.denied_result(call, hook_decision.reason)
         if hook_decision.action == "ask":
             record.approval_reason = hook_decision.reason
-            self.events.emit(AgentEvent(EventType.APPROVAL_REQUIRED, f"Approval required for {call.name}", {"tool": call.name, "reason": hook_decision.reason}))
-            record.approved = await self.approval_handler(call.name, hook_decision.reason)
+            self.events.emit(AgentEvent(EventType.APPROVAL_REQUIRED, f"Approval required for {call.name}", {"tool": call.name, "call_id": call.id, "arguments": call.arguments, "reason": hook_decision.reason}))
+            record.approved = await self.approval_handler(call, hook_decision.reason)
             if not record.approved:
                 return self.tools.denied_result(call, "User did not approve the tool call")
         elif hook_decision.auto_approved:

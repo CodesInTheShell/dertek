@@ -76,7 +76,7 @@ def root(
             approval_mode=approval_mode,
             session_id=session,
             events=RichEventSink(console),
-            approval_handler=lambda tool_name, detail: cli_approval(console, tool_name, detail),
+            approval_handler=lambda call, detail: cli_approval(console, call.name, detail),
         )
     except (DertekError, ValueError) as exc:
         console.print(f"[red]Error:[/red] {exc}")
@@ -180,8 +180,24 @@ def auth_logout() -> None:
     console.print("Signed out of ChatGPT." if removed else "No ChatGPT login was stored.")
 
 
+@app.command("web")
+def web(
+    port: Annotated[int, typer.Option("--port", min=1, max=65535)] = 8765,
+) -> None:
+    """Run the local Dertek browser interface."""
+    from dertek.web.server import create_app
+
+    try:
+        web_app = create_app(initial_workspace=Path.cwd(), port=port)
+    except (DertekError, ValueError) as exc:
+        console.print(f"[red]Error:[/red] {exc}")
+        raise typer.Exit(2) from exc
+    console.print(f"Dertek web: http://127.0.0.1:{port}")
+    web_app.run(host="127.0.0.1", port=port, debug=False, use_reloader=False, threaded=True)
+
 @app.command("models")
 def list_models(
+
     auth: Annotated[
         OpenAIAuthMode | None, typer.Option("--auth", help="OpenAI authentication mode.")
     ] = None,

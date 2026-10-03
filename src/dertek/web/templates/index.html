@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="dertek-csrf" content="{{ csrf_token }}">
+  <title>Dertek</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='vendor/bootstrap.min.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+</head>
+<body>
+  <div id="app"></div>
+  <script src="{{ url_for('static', filename='vendor/vue.global.prod.js') }}"></script>
+  <script src="{{ url_for('static', filename='vendor/vue-router.global.prod.js') }}"></script>
+  <script src="{{ url_for('static', filename='vendor/pinia.iife.js') }}"></script>
+  <script src="{{ url_for('static', filename='vendor/bootstrap.bundle.min.js') }}"></script>
+  <script type="module" src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
